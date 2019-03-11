@@ -94,6 +94,8 @@ class Flask(_PackageBoundObject):
         on the filesystem, can be used by extensions to improve debugging
         information and a lot more.
 
+        __name__，flask 用来寻找相关的资源。
+
         So it's important what you provide there.  If you are using a single
         module, `__name__` is always the correct value.  If you however are
         using a package, it's usually recommended to hardcode the name of
@@ -841,6 +843,13 @@ class Flask(_PackageBoundObject):
     debug = property(_get_debug, _set_debug)
     del _get_debug, _set_debug
 
+    """
+    Flask 本地启动
+    
+    run 方法就是实现了一个本地开发的 Server 环境
+    这个环境实现了 Server 和 WSGI 并且会调用 app 对象
+    
+    """
     def run(self, host=None, port=None, debug=None,
             load_dotenv=True, **options):
         """Runs the application on a local development server.
@@ -929,6 +938,10 @@ class Flask(_PackageBoundObject):
         if server_name:
             sn_host, _, sn_port = server_name.partition(':')
 
+        """
+        如果 host 以及 port 没有指定，设置 host 和 port 的默认值 
+        127.0.0.1 5000
+        """
         host = host or sn_host or _host
         port = int(port or sn_port or _port)
 
@@ -939,6 +952,12 @@ class Flask(_PackageBoundObject):
         cli.show_server_banner(self.env, self.debug, self.name, False)
 
         from werkzeug.serving import run_simple
+
+        """
+        启动 Server 用的是 werkzeug
+        Werkzeug 会监听指定端口，收到Http请求后会解析为 WSGI 格式，然后调用 app 去执行处理的逻辑。
+        
+        """
 
         try:
             run_simple(host, port, self, **options)
@@ -1222,6 +1241,11 @@ class Flask(_PackageBoundObject):
                                      'existing endpoint function: %s' % endpoint)
             self.view_functions[endpoint] = view_func
 
+    """
+    route 装饰器
+    用来实现路由规则
+    其实就是调用了 app.add_url_rule()
+    """
     def route(self, rule, **options):
         """A decorator that is used to register a view function for a
         given URL rule.  This does the same thing as :meth:`add_url_rule`
@@ -1816,6 +1840,9 @@ class Flask(_PackageBoundObject):
         # otherwise dispatch to the handler for that endpoint
         return self.view_functions[rule.endpoint](**req.view_args)
 
+    """
+    dispath_request 
+    """
     def full_dispatch_request(self):
         """Dispatches the request and on top of that performs request
         pre and postprocessing as well as HTTP exception catching and
@@ -1823,14 +1850,23 @@ class Flask(_PackageBoundObject):
 
         .. versionadded:: 0.7
         """
+
+
         self.try_trigger_before_first_request_functions()
         try:
             request_started.send(self)
+            # 调用第一次请求处理之前的 hook 函数
+            # 通过 before_first_request 定义
+            # 每个请求处理之前的 hook 函数，通过before_request 定义
             rv = self.preprocess_request()
             if rv is None:
+                # 真正的处理函数，会请求我们定义的 view
                 rv = self.dispatch_request()
         except Exception as e:
             rv = self.handle_user_exception(e)
+            # finalize_request 会将 dispath_request 返回的结果
+            # 比如 "hello world" 字符串 转换成 Response 对象
+            # 还包括 after_request teardown_request 的 hook
         return self.finalize_request(rv)
 
     def finalize_request(self, rv, from_error_handler=False):
@@ -2277,6 +2313,16 @@ class Flask(_PackageBoundObject):
         finally:
             builder.close()
 
+    """
+    调用 wsgi 会调用 app(environ,start_response) 来请求 flask application
+    __call__ 又调用 wsgi_app()
+    
+    app.wsgi_app=MyMiddleware(app.wsgi_app) 来实现 wsgi 的中间件
+    
+    environ: 表示 wsgi 环境，代表请求
+    start_response: 是一个可调用对象，代表响应
+    
+    """
     def wsgi_app(self, environ, start_response):
         """The actual WSGI application. This is not implemented in
         :meth:`__call__` so that middlewares can be applied without
@@ -2302,14 +2348,23 @@ class Flask(_PackageBoundObject):
             a list of headers, and an optional exception context to
             start the response.
         """
+
+        """
+        主要是找到处理函数，然后调用它。
+        """
+        # 创建请求的上下文，并把它压到栈里面
         ctx = self.request_context(environ)
         error = None
         try:
             try:
                 ctx.push()
+                # 正确的请求处理路径，会通过路由找到对应的处理函数
+                # full_dispatch_request() 是 wsgi_app 的核心
                 response = self.full_dispatch_request()
             except Exception as e:
                 error = e
+                # 错误处理，默认是 InternalServerError 错误处理函数
+                # 客户端会看到服务器 500 异常
                 response = self.handle_exception(e)
             except:
                 error = sys.exc_info()[1]
@@ -2318,9 +2373,23 @@ class Flask(_PackageBoundObject):
         finally:
             if self.should_ignore_error(error):
                 error = None
+
+            # 不管处理是否发生异常，都要把栈中的请求 pop 出来
             ctx.auto_pop(error)
 
+    """
+    因为 app 是一个对象，如果对象是可调用的话那么必须在类中实现 __call__ 方法
+    
+    app=Flask(__name__)
+    
+    WSGI 会调用
+    app(environ,start_response)
+    
+    __call__ 又调用了 wsgi_app 
+    """
+
     def __call__(self, environ, start_response):
+
         """The WSGI server calls the Flask application object as the
         WSGI application. This calls :meth:`wsgi_app` which can be
         wrapped to applying middleware."""

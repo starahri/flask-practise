@@ -890,8 +890,14 @@ class locked_cached_property(object):
 
 
 class _PackageBoundObject(object):
+    """
+    这个类会被 app.Flask 对象继承
+    import_name 是  __name__ 字符串
+
+    """
     #: The name of the package or module that this app belongs to. Do not
     #: change this once it is set by the constructor.
+
     import_name = None
 
     #: Location of the template files to be added to the template lookup.
@@ -903,6 +909,9 @@ class _PackageBoundObject(object):
     root_path = None
 
     def __init__(self, import_name, template_folder=None, root_path=None):
+        """
+        默认的情况下 传入的是 __name__ ,"templates", None
+        """
         self.import_name = import_name
         self.template_folder = template_folder
 
