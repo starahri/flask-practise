@@ -13,6 +13,9 @@ from functools import update_wrapper
 from werkzeug.wsgi import ClosingIterator
 from werkzeug._compat import PY2, implements_bool
 
+"""
+
+"""
 # since each thread has its own greenlet we can just use those as identifiers
 # for the context.  If greenlets are not available we fall back to the
 # current thread ident depending on where it is.
@@ -48,6 +51,10 @@ def release_local(local):
     local.__release_local__()
 
 
+"""
+实现了类似 threading.local 的效果
+在多进程或者多协程的情况下全局变量的隔离效果。
+"""
 class Local(object):
     __slots__ = ('__storage__', '__ident_func__')
 
