@@ -246,7 +246,10 @@ class AppContext(object):
         if BROKEN_PYPY_CTXMGR_EXIT and exc_type is not None:
             reraise(exc_type, exc_value, tb)
 
+"""
+封装的请求对象，这个东西会放在 _request_ctx_stack
 
+"""
 class RequestContext(object):
     """The request context contains all request relevant information.  It is
     created at the beginning of the request and pushed to the
@@ -279,6 +282,10 @@ class RequestContext(object):
 
     def __init__(self, app, environ, request=None, session=None):
         self.app = app
+        """
+        生成 request 对象
+        Request 对象在 wrappers.py
+        """
         if request is None:
             request = app.request_class(environ)
         self.request = request

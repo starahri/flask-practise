@@ -1258,6 +1258,10 @@ class Map(object):
         return MapAdapter(self, server_name, script_name, subdomain,
                           url_scheme, path_info, default_method, query_args)
 
+    """
+    将 url_map 绑定到 environ 
+    environ 是 Request.environ
+    """
     def bind_to_environ(self, environ, server_name=None, subdomain=None):
         """Like :meth:`bind` but you can pass it an WSGI environment and it
         will fetch the information from that dictionary.  Note that because of

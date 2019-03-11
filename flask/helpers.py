@@ -83,9 +83,15 @@ def get_load_dotenv(default=True):
     return val.lower() in ('0', 'false', 'no')
 
 
+"""
+获取函数名字符串，作为 route 的 endpoint
+"""
 def _endpoint_from_view_func(view_func):
     """Internal helper that returns the default endpoint for a given
     function.  This always is the function name.
+    """
+    """
+    assert 如果为 false 的话，后面的字符会被打印出来
     """
     assert view_func is not None, 'expected view func if endpoint ' \
                                   'is not provided.'

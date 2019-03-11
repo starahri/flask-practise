@@ -106,8 +106,11 @@ class JSONMixin(object):
             raise BadRequest('Failed to decode JSON object: {0}'.format(e))
 
         raise BadRequest()
+"""
+默认的请求对象  
+使用的时候会被封装为 RequestContext 在ctx.py中
 
-
+"""
 class Request(RequestBase, JSONMixin):
     """The request object used by default in Flask.  Remembers the
     matched endpoint and view arguments.

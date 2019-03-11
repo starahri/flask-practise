@@ -541,6 +541,9 @@ class Flask(_PackageBoundObject):
         #:
         #:    app = Flask(__name__)
         #:    app.url_map.converters['list'] = ListConverter
+        """
+        url_map 保存的是 URL 到 endpoint 的映射
+        """
         self.url_map = Map()
 
         self.url_map.host_matching = host_matching
@@ -1160,6 +1163,7 @@ class Flask(_PackageBoundObject):
                 pass
             app.add_url_rule('/', 'index', index)
 
+
         If the view_func is not provided you will need to connect the endpoint
         to a view function like so::
 
@@ -1196,9 +1200,17 @@ class Flask(_PackageBoundObject):
                         Starting with Flask 0.6, ``OPTIONS`` is implicitly
                         added and handled by the standard request handling.
         """
+        """
+        如果没有 endpoint ，就生成 endpoint 
+        """
         if endpoint is None:
             endpoint = _endpoint_from_view_func(view_func)
         options['endpoint'] = endpoint
+
+        """
+        取出 methods 参数，如果没有，就在 view_func 的属性中找 __dict__
+        如果还没有就生成 GET
+        """
         methods = options.pop('methods', None)
 
         # if the methods are not given and the view_func object knows its
@@ -1209,6 +1221,9 @@ class Flask(_PackageBoundObject):
         if isinstance(methods, string_types):
             raise TypeError('Allowed methods have to be iterables of strings, '
                             'for example: @app.route(..., methods=["POST"])')
+        """
+        methods 表示这个 view_func 可以处理请求的类型 get post ...
+        """
         methods = set(item.upper() for item in methods)
 
         # Methods that should always be added
@@ -1216,6 +1231,13 @@ class Flask(_PackageBoundObject):
 
         # starting with Flask 0.8 the view_func object can disable and
         # force-enable the automatic options handling.
+
+        """
+        provide_automatic_options 是布尔类型
+        OPTIONS 请求服务器对于某些接口等资源的支持情况，包括各种请求方法，头部的支持情况，仅用作查询，默认的情况是支持的。
+        OPTIONS 请求 是一种浏览器行为  在某些情况下,发起GET 或者 POST 请求之前 会由浏览器发起 OPTIONS 请求
+        
+        """
         if provide_automatic_options is None:
             provide_automatic_options = getattr(view_func,
                 'provide_automatic_options', None)
@@ -1227,13 +1249,32 @@ class Flask(_PackageBoundObject):
             else:
                 provide_automatic_options = False
 
+        """
+        将 methods 和 required_methods 两个集合做 and 运算
+        """
         # Add the required methods now.
         methods |= required_methods
 
+        """
+        构建 URL 映射类
+        传入的 rule 是字符串 options 保存了 endpoint
+        返回的 rule 是 werkzeug.routing:Rule 对象
+        """
         rule = self.url_rule_class(rule, methods=methods, **options)
         rule.provide_automatic_options = provide_automatic_options
 
+        """
+        url_map 添加映射
+        url_map 是 werkzeug.routing:Map 对象
+        """
         self.url_map.add(rule)
+        """
+        endpoint 必须不同
+        如果传入了 view_func 那么将 view_func 和 endpoint 进行绑定
+        werkzeug 的路由过程，其实是 url 到 endpoint 的转换：通过 url 找到处理该 url 的 endpoint。
+        至于 endpoint 和 view function 之间的匹配关系，werkzeug 是不管的，是由 flask 负责保存 endpoint 到 view_func 的映射。
+
+        """
         if view_func is not None:
             old_func = self.view_functions.get(endpoint)
             if old_func is not None and old_func != view_func:
@@ -1271,6 +1312,12 @@ class Flask(_PackageBoundObject):
                         added and handled by the standard request handling.
         """
         def decorator(f):
+
+            """
+            options 是一个 dict
+            可以在这个 dict 里面指定 endpoint
+            没有指定就是 None
+            """
             endpoint = options.pop('endpoint', None)
             self.add_url_rule(rule, endpoint, f, **options)
             return f
@@ -1818,6 +1865,11 @@ class Flask(_PackageBoundObject):
         from .debughelpers import FormDataRoutingRedirect
         raise FormDataRoutingRedirect(request)
 
+    """
+    
+    做请求分发的。匹配路由规则，获取 endpoint， 找到对应的函数执行，获的返回值。
+    """
+
     def dispatch_request(self):
         """Does the request dispatching.  Matches the URL and returns the
         return value of the view or error handler.  This does not have to
@@ -1828,16 +1880,32 @@ class Flask(_PackageBoundObject):
            This no longer does the exception handling, this code was
            moved to the new :meth:`full_dispatch_request`.
         """
+
+        """
+        获取请求对象
+        _request_ctx_stack.top.request 保存着当前请求的信息，
+        在每次请求过来的时候，flask 会把当前请求的信息保存进去，这样我们就能在整个请求处理过程中使用它。
+        _request_ctx_stack 保存的是 RequestContext 对象，它出现在 flask/ctx.py 文件中
+        
+        为什么并发不会相互干扰？
+        """
         req = _request_ctx_stack.top.request
         if req.routing_exception is not None:
             self.raise_routing_exception(req)
         rule = req.url_rule
         # if we provide automatic options for this URL and the
         # request came with the OPTIONS method, reply automatically
+        """
+        如果设置了 自动相应 OPTIONS 请求，那么就自动处理
+        """
         if getattr(rule, 'provide_automatic_options', False) \
            and req.method == 'OPTIONS':
             return self.make_default_options_response()
         # otherwise dispatch to the handler for that endpoint
+
+        """
+        找到请求的 endpoint 对应的函数，并且传入参数。
+        """
         return self.view_functions[rule.endpoint](**req.view_args)
 
     """
@@ -2048,6 +2116,10 @@ class Flask(_PackageBoundObject):
 
         return rv
 
+    """
+    请求对象 RequestContext 在初始化的时候会调用这个方法。
+    这个方法主要是把 app 的 url_map 绑定到 WSGI 的 environ 变量上
+    """
     def create_url_adapter(self, request):
         """Creates a URL adapter for the given request. The URL adapter
         is created at a point where the request context is not yet set
@@ -2064,15 +2136,36 @@ class Flask(_PackageBoundObject):
             matching. Use :attr:`subdomain_matching` instead.
         """
         if request is not None:
+            """
+    
+            Flask(__name__,subdomain_matching=True)
+            开启子域匹配。
+            @app.route("/",subdomain="blog")
+            blog.local
+            """
             # If subdomain matching is disabled (the default), use the
             # default subdomain in all cases. This should be the default
             # in Werkzeug but it currently does not have that feature.
+
+            """
+            subdomain_matching Flask init 的时候会传入默认是 False 不匹配子域
+            不匹配的时候 使用 default_subdomain 
+            default_subdomain 在 routing.py 中被初始化为 ""
+            """
             subdomain = ((self.url_map.default_subdomain or None)
                          if not self.subdomain_matching else None)
+
+            """
+            绑定变量
+            url_map 是 Werkzeug 的 Map 类的对象
+            """
             return self.url_map.bind_to_environ(
                 request.environ,
                 server_name=self.config['SERVER_NAME'],
                 subdomain=subdomain)
+        """
+        request is None 
+        """
         # We need at the very least the server name to be set for this
         # to work.
         if self.config['SERVER_NAME'] is not None:
