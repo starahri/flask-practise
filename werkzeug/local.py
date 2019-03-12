@@ -14,6 +14,9 @@ from werkzeug.wsgi import ClosingIterator
 from werkzeug._compat import PY2, implements_bool
 
 """
+Greenlets are a very lightweight coroutine written in C that are cooperatively scheduled.
+They provide us with a very lightweight thread-like object that allows us to achieve concurrent
+execution within our python programs without incurring the cost of spinning up multiple threads.
 
 """
 # since each thread has its own greenlet we can just use those as identifiers
@@ -21,11 +24,17 @@ from werkzeug._compat import PY2, implements_bool
 # current thread ident depending on where it is.
 try:
     from greenlet import getcurrent as get_ident
-except ImportError:
+except ImportError  :
+    """
+    Import Error 会报两个 No module named "**" 的错误
+    根据上面注释  flask 使用的是 current thread ident
+    """
     try:
         from thread import get_ident
-    except ImportError:
+    except ImportError :
+
         from _thread import get_ident
+
 
 
 def release_local(local):
@@ -52,25 +61,58 @@ def release_local(local):
 
 
 """
-实现了类似 threading.local 的效果
-在多进程或者多协程的情况下全局变量的隔离效果。
+实现了类似 threading.local 的效果。
+在多进程或者多协程的情况下全局变量的隔离。
+
+LocalStack 和 LocalProxy 的基础类。
 """
+
+
 class Local(object):
     __slots__ = ('__storage__', '__ident_func__')
 
     def __init__(self):
+        """
+        所有的数据都保存在 __storage__ 这个 嵌套 dict 当中
+
+        get_ident 是系统包里面的一个函数 c 语言写的，返回当前线程的 identify
+        下面是官方注释
+        get_ident() -> integer
+
+        Return a non-zero integer that uniquely identifies the current thread
+        amongst other threads that exist simultaneously.
+        This may be used to identify per-thread resources.
+        Even though on some platforms threads identities may appear to be
+        allocated consecutive numbers starting at 1, this behavior should not
+        be relied upon, and the number should be seen purely as a magic cookie.
+        A thread's identity may be reused for another thread after it exits.
+
+        """
         object.__setattr__(self, '__storage__', {})
         object.__setattr__(self, '__ident_func__', get_ident)
 
     def __iter__(self):
+        """
+        迭代
+        :return:
+        """
         return iter(self.__storage__.items())
 
     def __call__(self, proxy):
         """Create a proxy for a name."""
+        """ proxy 是一个字符串"""
+
         return LocalProxy(self, proxy)
 
+    """
+    清除当前线程保存的所有数据
+    """
     def __release_local__(self):
         self.__storage__.pop(self.__ident_func__(), None)
+
+    """
+    下面三个方法实现了对属性的访问设置和删除
+    """
 
     def __getattr__(self, name):
         try:
@@ -93,6 +135,12 @@ class Local(object):
             raise AttributeError(name)
 
 
+"""
+LocalStack 是基于 Local 实现的 stack 结构
+
+LocalStack() 返回一个线程隔离的栈结构
+
+"""
 class LocalStack(object):
 
     """This class works similar to a :class:`Local` but keeps a stack
@@ -124,9 +172,13 @@ class LocalStack(object):
     def __init__(self):
         self._local = Local()
 
+
     def __release_local__(self):
         self._local.__release_local__()
 
+    """
+    返回当前线程标识
+    """
     def _get__ident_func__(self):
         return self._local.__ident_func__
 
@@ -143,9 +195,14 @@ class LocalStack(object):
             return rv
         return LocalProxy(_lookup)
 
+    """
+    push pop 和 top 三个方法实现了对栈的操作
+    
+    """
     def push(self, obj):
         """Pushes a new item to the stack"""
         rv = getattr(self._local, 'stack', None)
+        # 实际是 _local.__storage__[ident][stack]=[]
         if rv is None:
             self._local.stack = rv = []
         rv.append(obj)
@@ -159,11 +216,18 @@ class LocalStack(object):
         if stack is None:
             return None
         elif len(stack) == 1:
+            """
+            如果 stack 为空的话，那么会被删除
+            """
             release_local(self._local)
             return stack[-1]
         else:
             return stack.pop()
 
+    """
+    元编程 绑定为属性
+    返回栈顶元素
+    """
     @property
     def top(self):
         """The topmost item on the stack.  If the stack is empty,
@@ -257,6 +321,11 @@ class LocalManager(object):
         )
 
 
+
+
+"""
+LocalProxy 是 Local 对象的代理。负责把所有 LocalProxy 的操作转发给 Local
+"""
 @implements_bool
 class LocalProxy(object):
 
@@ -296,10 +365,26 @@ class LocalProxy(object):
     """
     __slots__ = ('__local', '__dict__', '__name__', '__wrapped__')
 
+    """
+    NOTE：
+    local 是一个 function 如果执行这个函数 会返回 LocalStack 的栈( 通过[]模拟实现 )顶元素的某个属性
+    """
+
     def __init__(self, local, name=None):
+        """
+
+        双下划线__的属性，会保存到 _ClassName__variable 中
+        通过 _LocalProxy__local设置的属性，可以通过 self.__local 来获取
+
+        """
         object.__setattr__(self, '_LocalProxy__local', local)
         object.__setattr__(self, '__name__', name)
         if callable(local) and not hasattr(local, '__release_local__'):
+            """
+            request  g session current_app 传入的 LocalProxy 的参数是一个 func
+            func 返回的是一个 LocalStack 的栈顶元素的某一个属性
+            此时会这个 local 会被标记为 Wrapped
+            """
             # "local" is a callable that is not an instance of Local or
             # LocalManager: mark it as a wrapped function.
             object.__setattr__(self, '__wrapped__', local)
@@ -310,9 +395,17 @@ class LocalProxy(object):
         you want to pass the object into a different context.
         """
         if not hasattr(self.__local, '__release_local__'):
+            """
+            如果我们传入的__local 不是一个 LocalStack 或者 Local 对象。
+            而是我们传入的 func 那么会直接调用返回，此时返回的是 Localstack 栈顶元素的某一个属性。
+            """
             return self.__local()
         try:
+            """
+            否则我们返回 Local对象里面本线程的__name__变量
+            """
             return getattr(self.__local, self.__name__)
+
         except AttributeError:
             raise RuntimeError('no object bound to %s' % self.__name__)
 

@@ -3,6 +3,8 @@
     werkzeug.wrappers
     ~~~~~~~~~~~~~~~~~
 
+    request 和 response 的子类
+
     The wrappers are simple request and response objects which you can
     subclass to do whatever you want them to do.  The request object contains
     the information transmitted by the client (webbrowser) and the response
@@ -219,6 +221,12 @@ class BaseRequest(object):
     disable_data_descriptor = False
 
     def __init__(self, environ, populate_request=True, shallow=False):
+
+        """
+        一个环形引用
+        初始化的时候并不会解析 environ
+        访问某些字段才会解析某些字段
+        """
         self.environ = environ
         if populate_request and not shallow:
             self.environ['werkzeug.request'] = self
@@ -1992,6 +2000,10 @@ class WWWAuthenticateMixin(object):
         header = self.headers.get('www-authenticate')
         return parse_www_authenticate_header(header, on_update)
 
+"""
+负责解析 Request 并生成 Request 对象
+当
+"""
 
 class Request(BaseRequest, AcceptMixin, ETagRequestMixin,
               UserAgentMixin, AuthorizationMixin,

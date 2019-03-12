@@ -750,6 +750,9 @@ class Rule(RuleFactory):
         )
         self._regex = re.compile(regex, re.UNICODE)
 
+    """
+    判断 rule 是否匹配路径
+    """
     def match(self, path, method=None):
         """Check if the rule matches a given path. Path is a string in the
         form ``"subdomain|/path"`` and is assembled by the map.  If
@@ -1217,6 +1220,14 @@ class Map(object):
             self._rules_by_endpoint.setdefault(rule.endpoint, []).append(rule)
         self._remap = True
 
+    """
+         return Map.bind(self, server_name, script_name,
+                            subdomain, environ['wsgi.url_scheme'],
+                            environ['REQUEST_METHOD'], path_info,
+                            query_args=query_args)
+                            
+        返回一个 MapAdapter 的实例
+    """
     def bind(self, server_name, script_name=None, subdomain=None,
              url_scheme='http', default_method='GET', path_info=None,
              query_args=None):
@@ -1243,6 +1254,7 @@ class Map(object):
            `query_args` can now also be a string.
         """
         server_name = server_name.lower()
+        # host_matching 是 flask 实例化传入的一个参数
         if self.host_matching:
             if subdomain is not None:
                 raise RuntimeError('host matching enabled and a '
@@ -1260,7 +1272,9 @@ class Map(object):
 
     """
     将 url_map 绑定到 environ 
-    environ 是 Request.environ
+    environ 是 Request.environ 是一个 dict 结构
+    server_name 是由 Config 传入
+    
     """
     def bind_to_environ(self, environ, server_name=None, subdomain=None):
         """Like :meth:`bind` but you can pass it an WSGI environment and it
@@ -1271,11 +1285,17 @@ class Map(object):
         `HTTP_HOST` if provided) as used `server_name` with disabled subdomain
         feature.
 
+        因为 WSGI 的限制，environ 解析不出 subdomain + server_name 字段的，
+        Werkzeug 把 environ["SERVER_NAME"] 和 environ["SERVER_PORT"] 作为 server_name 字段
+        subdomain 还是None
+
         If `subdomain` is `None` but an environment and a server name is
         provided it will calculate the current subdomain automatically.
         Example: `server_name` is ``'example.com'`` and the `SERVER_NAME`
         in the wsgi `environ` is ``'staging.dev.example.com'`` the calculated
         subdomain will be ``'staging.dev'``.
+
+        subdomain 如果不传入会从 environ["SERVER_NAME"]-server_name 计算出来
 
         If the object passed as environ has an environ attribute, the value of
         this attribute is used instead.  This allows you to pass request

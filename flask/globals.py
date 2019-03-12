@@ -19,8 +19,9 @@
 比如在 flask 中，视图函数需要知道它执行情况的请求信息，以及应用信息（应用中初始化的数据库等），才能够正确运行
 
 
-最直观地做法是把这些信息封装成一个对象，作为参数传递给视图函数，类似于Spring的做法。
-但是这样的话，所有的视图函数都需要添加对应的参数，即使该函数内部并没有使用到它。
+最直观地做法是把这些信息封装成一个对象，作为参数传递给视图函数。
+但是这样的话，所有的视图函数都需要添加对应的参数，即使该函数内部并没有使用到它
+比如我只返回一个 "Hello World"。
 
 flask 的做法是把这些信息作为类似全局变量的东西，视图函数需要的时候，可以使用 from flask import request 获取。
 但是这些对象和全局变量不同的是——它们必须是动态的，因为在多线程或者多协程的情况下，
@@ -52,6 +53,9 @@ this, set up an application context with app.app_context().  See the
 documentation for more information.\
 '''
 
+"""
+返回 _request_ctx_stack 的栈顶的 ele.name 属性
+"""
 
 def _lookup_req_object(name):
     top = _request_ctx_stack.top
@@ -60,12 +64,19 @@ def _lookup_req_object(name):
     return getattr(top, name)
 
 
+"""
+返回 _app_ctx_stack 的栈顶 ele.name 属性
+"""
 def _lookup_app_object(name):
     top = _app_ctx_stack.top
     if top is None:
         raise RuntimeError(_app_ctx_err_msg)
     return getattr(top, name)
 
+
+"""
+返回 _app_ctx_stack 的栈顶 ele.app 
+"""
 
 def _find_app():
     top = _app_ctx_stack.top
@@ -78,13 +89,24 @@ flask 有两种上下文：application context 和 request context。
 application context -> current_app 和 g
 request context -> request 和 session
 
+context 都是 LocalStack 栈结构
+current_app /g /request /session 都是 LocalProxy
+
 LocalStack 和 LocalProxy 可以让我们动态的获取两个上下文的内容，在并发程序中每个视图函数都只看到自己的上下文
-LocalStack 和 LocalProxy 都是由 werkzeug 提供的
+LocalStack 和 LocalProxy 是由 werkzeug 提供
 
 """
 # context locals
 _request_ctx_stack = LocalStack()
 _app_ctx_stack = LocalStack()
+
+"""
+
+partial 会实现函数的参数绑定，并且返回的依然是个function
+_lookup_req_object("request") 那么返回的是一个已经处理的结果
+不然必须传入两个参数进去 _lookup_req_object ,"request"
+
+"""
 current_app = LocalProxy(_find_app)
 request = LocalProxy(partial(_lookup_req_object, 'request'))
 session = LocalProxy(partial(_lookup_req_object, 'session'))

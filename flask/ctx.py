@@ -283,14 +283,17 @@ class RequestContext(object):
     def __init__(self, app, environ, request=None, session=None):
         self.app = app
         """
-        生成 request 对象
+        生成 request 对象作为 RequestContext 的属性
         Request 对象在 wrappers.py
+        
         """
         if request is None:
             request = app.request_class(environ)
         self.request = request
         self.url_adapter = None
         try:
+
+            # 返回的是一个 MapAdapter 对象
             self.url_adapter = app.create_url_adapter(self.request)
         except HTTPException as e:
             self.request.routing_exception = e
@@ -317,6 +320,10 @@ class RequestContext(object):
         self._after_request_functions = []
 
         if self.url_adapter is not None:
+
+            """
+            实现路由匹配逻辑
+            """
             self.match_request()
 
     def _get_g(self):

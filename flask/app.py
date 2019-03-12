@@ -852,6 +852,9 @@ class Flask(_PackageBoundObject):
     run 方法就是实现了一个本地开发的 Server 环境
     这个环境实现了 Server 和 WSGI 并且会调用 app 对象
     
+    默认是开启多线程的
+    
+    
     """
     def run(self, host=None, port=None, debug=None,
             load_dotenv=True, **options):
@@ -2119,6 +2122,7 @@ class Flask(_PackageBoundObject):
     """
     请求对象 RequestContext 在初始化的时候会调用这个方法。
     这个方法主要是把 app 的 url_map 绑定到 WSGI 的 environ 变量上
+    request.environ 可以访问的到
     """
     def create_url_adapter(self, request):
         """Creates a URL adapter for the given request. The URL adapter
@@ -2158,6 +2162,9 @@ class Flask(_PackageBoundObject):
             """
             绑定变量
             url_map 是 Werkzeug 的 Map 类的对象
+            
+            subdomain 是 Flask(__name__,subdomain="XXX") 传入的
+            server_name 是有config 对象取出
             """
             return self.url_map.bind_to_environ(
                 request.environ,
@@ -2335,6 +2342,7 @@ class Flask(_PackageBoundObject):
         return AppContext(self)
 
     def request_context(self, environ):
+
         """Create a :class:`~flask.ctx.RequestContext` representing a
         WSGI environment. Use a ``with`` block to push the context,
         which will make :data:`request` point at this request.
@@ -2348,6 +2356,7 @@ class Flask(_PackageBoundObject):
 
         :param environ: a WSGI environment
         """
+        # 创建请求上下文 RequestContext
         return RequestContext(self, environ)
 
     def test_request_context(self, *args, **kwargs):
@@ -2450,6 +2459,7 @@ class Flask(_PackageBoundObject):
         error = None
         try:
             try:
+                # 压栈
                 ctx.push()
                 # 正确的请求处理路径，会通过路由找到对应的处理函数
                 # full_dispatch_request() 是 wsgi_app 的核心
@@ -2469,6 +2479,7 @@ class Flask(_PackageBoundObject):
 
             # 不管处理是否发生异常，都要把栈中的请求 pop 出来
             ctx.auto_pop(error)
+            # 一次访问请求结束
 
     """
     因为 app 是一个对象，如果对象是可调用的话那么必须在类中实现 __call__ 方法

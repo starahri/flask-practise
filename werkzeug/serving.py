@@ -624,6 +624,10 @@ class BaseWSGIServer(HTTPServer, object):
         con, info = self.socket.accept()
         return con, info
 
+"""
+作用只是纯粹设置一下了变量
+Server 的启动都是在子类里面完成的
+"""
 
 class ThreadedWSGIServer(ThreadingMixIn, BaseWSGIServer):
 
@@ -645,6 +649,10 @@ class ForkingWSGIServer(ForkingMixIn, BaseWSGIServer):
                                 passthrough_errors, ssl_context, fd)
         self.max_children = processes
 
+"""
+threaded 开启多线程
+Processes 开启多进程 并制定最大进程数
+"""
 
 def make_server(host=None, port=None, app=None, threaded=False, processes=1,
                 request_handler=None, passthrough_errors=False,
@@ -674,6 +682,11 @@ def is_running_from_reloader():
     """
     return os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
 
+"""
+如果是由 flask 进入的话 thread 是开启的
+processes >1 的话会开启多进程
+
+"""
 
 def run_simple(hostname, port, application, use_reloader=False,
                use_debugger=False, use_evalex=True,
