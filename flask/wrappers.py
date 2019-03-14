@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 """
+
+request 和 response 类
+都是用的 Werkzeug/Wrappers 中的类作为父类
+
     flask.wrappers
     ~~~~~~~~~~~~~~
 
@@ -184,6 +188,10 @@ class Request(RequestBase, JSONMixin):
             from .debughelpers import attach_enctype_error_multidict
             attach_enctype_error_multidict(self)
 
+"""
+返回对象类
+实际上是 Werkzeug/Wrappers.py 里面的 ResponseBase
+"""
 
 class Response(ResponseBase, JSONMixin):
     """The response object that is used by default in Flask.  Works like the

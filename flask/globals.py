@@ -109,5 +109,11 @@ _lookup_req_object("request") 那么返回的是一个已经处理的结果
 """
 current_app = LocalProxy(_find_app)
 request = LocalProxy(partial(_lookup_req_object, 'request'))
+
+"""
+flask 会在请求过来的时候自动解析 cookie 的值，把它变成 session 变量。
+开发在视图函数中可以使用它的值，也可以对它进行更新。
+最后再返回的 response 中，flask 也会自动把 session 写回到 cookie。
+"""
 session = LocalProxy(partial(_lookup_req_object, 'session'))
 g = LocalProxy(partial(_lookup_app_object, 'g'))

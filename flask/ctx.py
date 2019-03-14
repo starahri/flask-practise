@@ -363,6 +363,9 @@ class RequestContext(object):
         except HTTPException as e:
             self.request.routing_exception = e
 
+    """
+    将 request 放到上下文中 _request_ctx_stack 中
+    """
     def push(self):
         """Binds the request context to the current context."""
         # If an exception occurs in debug mode or if context preservation is
@@ -373,14 +376,22 @@ class RequestContext(object):
         # it's invalidated, otherwise we run at risk that something leaks
         # memory.  This is usually only a problem in test suite since this
         # functionality is not active in production environments.
+        """
+        在 debug 模式 或者 激活上下文保存 栈中是可能保留以前的 request的
+        """
+        # 获取栈顶
         top = _request_ctx_stack.top
         if top is not None and top.preserved:
+            # 栈顶不为空 弹出
             top.pop(top._preserved_exc)
 
         # Before we push the request context we have to ensure that there
         # is an application context.
+
+        # 确保 app context 存在
         app_ctx = _app_ctx_stack.top
         if app_ctx is None or app_ctx.app != self.app:
+
             app_ctx = self.app.app_context()
             app_ctx.push()
             self._implicit_app_ctx_stack.append(app_ctx)
@@ -390,19 +401,36 @@ class RequestContext(object):
         if hasattr(sys, 'exc_clear'):
             sys.exc_clear()
 
+        # 将 RequestContext 推入 request 上下文中
         _request_ctx_stack.push(self)
 
+        """
+        初始化 Session 变量，保存在 RequestContext.session 上
+        
+        """
         # Open the session at the moment that the request context is available.
-        # This allows a custom open_session method to use the request context.
+        # This allows a custom open_session method to use the request context (_request_ctx_stack).
         # Only open a new session if this is the first time the request was
         # pushed, otherwise stream_with_context loses the session.
         if self.session is None:
+            """
+            Session_interface 在默认情况下指向 SecureCookieSessionInterface 这个类
+            SecureCookieSessionInterface 可以初始化 Session 对象，验证 cookie
+            """
             session_interface = self.app.session_interface
             self.session = session_interface.open_session(
                 self.app, self.request
             )
 
+            """
+            如果没有设置 sk  open_session 会返回 None
+            """
+
             if self.session is None:
+                """
+                调用 SecureCookieSessionInterface 初始化 NullSession 对象
+                NullSession 不能进行任何读写操作，不然会报错，要求设置 SK
+                """
                 self.session = session_interface.make_null_session(self.app)
 
     def pop(self, exc=_sentinel):

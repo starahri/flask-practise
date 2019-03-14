@@ -233,6 +233,9 @@ class UpdateDictMixin(object):
 
     on_update = None
 
+    """
+    定义了一装饰器 修改 dict 的时候都会调用 on_update
+    """
     def calls_update(name):
         def oncall(self, *args, **kw):
             rv = getattr(super(UpdateDictMixin, self), name)(*args, **kw)
@@ -259,6 +262,9 @@ class UpdateDictMixin(object):
             self.on_update(self)
         return rv
 
+    """
+    应用装饰器
+    """
     __setitem__ = calls_update('__setitem__')
     __delitem__ = calls_update('__delitem__')
     clear = calls_update('clear')
@@ -2003,6 +2009,12 @@ class ResponseCacheControl(_CacheControl):
 _CacheControl.cache_property = staticmethod(cache_property)
 
 
+"""
+SecureCookieSession 的父类
+CallbackDict 在初始化的时候指定了一个 on_update 函数
+如果 每次调用方法对字典进行修改的时候  __setitem__ __delitem__ clear popitem 之类的
+会回调这个函数 
+"""
 class CallbackDict(UpdateDictMixin, dict):
 
     """A dict that calls a function passed every time something is changed.
@@ -2010,6 +2022,7 @@ class CallbackDict(UpdateDictMixin, dict):
     """
 
     def __init__(self, initial=None, on_update=None):
+        #
         dict.__init__(self, initial or ())
         self.on_update = on_update
 

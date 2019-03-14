@@ -49,6 +49,10 @@ class SessionMixin(collections_abc.MutableMapping):
     accessed = True
 
 
+"""
+Session 对象 本质上是一个字典 字典的部分由 CallbackDict 实现
+由于继承关系 Session 的操作和 dict 对象是一致的
+"""
 class SecureCookieSession(CallbackDict, SessionMixin):
     """Base class for sessions based on signed cookies.
 
@@ -70,6 +74,11 @@ class SecureCookieSession(CallbackDict, SessionMixin):
     #: header, which allows caching proxies to cache different pages for
     #: different users.
     accessed = False
+
+    """
+    initial 究竟是什么东西
+    目前看来是用来初始化 session 的东西
+    """
 
     def __init__(self, initial=None):
         def on_update(self):
@@ -301,6 +310,9 @@ class SessionInterface(object):
 
 session_json_serializer = TaggedJSONSerializer()
 
+"""
+flask 默认的 session 
+"""
 
 class SecureCookieSessionInterface(SessionInterface):
     """The default session interface that stores sessions in signed cookies
@@ -308,17 +320,34 @@ class SecureCookieSessionInterface(SessionInterface):
     """
     #: the salt that should be applied on top of the secret key for the
     #: signing of cookie based sessions.
+    """
+    加的盐 一个字符串
+    """
+
     salt = 'cookie-session'
     #: the hash function to use for the signature.  The default is sha1
     digest_method = staticmethod(hashlib.sha1)
     #: the name of the itsdangerous supported key derivation.  The default
     #: is hmac.
+    """
+    sha1 运算是不需要密钥的 但是 hmac_sha1 需要，这个密钥就是 hmac，在 flask 中是 SK
+    """
     key_derivation = 'hmac'
     #: A python serializer for the payload.  The default is a compact
     #: JSON derived serializer with support for some extra Python types
     #: such as datetime objects or tuples.
     serializer = session_json_serializer
+
+    # 设置默认的 Session 对象
+    """
+    Session 对象本质上都是一个 dict 结构，不过实现了一些新的功能
+    """
     session_class = SecureCookieSession
+
+    """
+    session 的签名算法
+    
+    """
 
     def get_signing_serializer(self, app):
         if not app.secret_key:
@@ -327,17 +356,39 @@ class SecureCookieSessionInterface(SessionInterface):
             key_derivation=self.key_derivation,
             digest_method=self.digest_method
         )
+        """
+        secret_key  密钥
+        salt 为了安全性而设置的一个 salt
+        serializer 序列算法
+        signer_kwargs 加密算法
+        """
+
+        """
+        URLSafeTimedSerializer 是 itsdangerous 库的类，主要用来进行数据验证，增加网络中数据的安全性。
+        itsdangerours 提供了多种 Serializer，可以方便地进行类似 json 处理的数据序列化和反序列的操作。
+        """
         return URLSafeTimedSerializer(app.secret_key, salt=self.salt,
                                       serializer=self.serializer,
                                       signer_kwargs=signer_kwargs)
 
+    """
+    某个请求入栈(_request_ctx_stack)的时候会调用。
+    """
     def open_session(self, app, request):
+        # 获取 session 的签名算法 没有 sk 会返回 None
+        # get_signing_serializer 负责 cookie 到 session 的转化问题
         s = self.get_signing_serializer(app)
         if s is None:
             return None
+
+        # 从cookie 中获取 session 的变量值
         val = request.cookies.get(app.session_cookie_name)
+
+        # 如果 cookie 中没有，那么可能是一个新用户
         if not val:
             return self.session_class()
+
+        # 验证 cookie 中的数据是否被篡改 如果被修改了 会创建一个新Session
         max_age = total_seconds(app.permanent_session_lifetime)
         try:
             data = s.loads(val, max_age=max_age)

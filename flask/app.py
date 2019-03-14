@@ -175,6 +175,11 @@ class Flask(_PackageBoundObject):
 
     #: The class that is used for response objects.  See
     #: :class:`~flask.Response` for more information.
+    """
+    返回对象类
+    如果你想实现自定义返回对象的话
+    
+    """
     response_class = Response
 
     #: The class that is used for the Jinja environment.
@@ -233,6 +238,9 @@ class Flask(_PackageBoundObject):
     #:
     #: This attribute can also be configured from the config with the
     #: ``SESSION_COOKIE_NAME`` configuration key.  Defaults to ``'session'``
+    """
+    在cookie 中表示 session 的 key 值，默认是 "session"
+    """
     session_cookie_name = ConfigAttribute('SESSION_COOKIE_NAME')
 
     #: A :class:`~datetime.timedelta` which is used to set the expiration
@@ -242,6 +250,10 @@ class Flask(_PackageBoundObject):
     #: This attribute can also be configured from the config with the
     #: ``PERMANENT_SESSION_LIFETIME`` configuration key.  Defaults to
     #: ``timedelta(days=31)``
+    """
+    Session 过期时间默认一个月 
+    
+    """
     permanent_session_lifetime = ConfigAttribute('PERMANENT_SESSION_LIFETIME',
         get_converter=_make_timedelta)
 
@@ -336,6 +348,12 @@ class Flask(_PackageBoundObject):
     #: :class:`~flask.sessions.SecureCookieSessionInterface` is used here.
     #:
     #: .. versionadded:: 0.8
+
+    """
+    为什么这样写，因为这样可以很方便的覆盖接口 Flask.session_interface=MySession()
+    这是一个对象，而不是一个类，后续会直接调用方法 session_interface.open_session()
+    
+    """
     session_interface = SecureCookieSessionInterface()
 
     # TODO remove the next three attrs when Sphinx :inherited-members: works
@@ -1940,6 +1958,11 @@ class Flask(_PackageBoundObject):
             # 还包括 after_request teardown_request 的 hook
         return self.finalize_request(rv)
 
+
+    """
+    view 函数的返回结果 rv 会传入这个函数进行处理
+    主要包含了 response 对象的生成和 hook 逻辑处理
+    """
     def finalize_request(self, rv, from_error_handler=False):
         """Given the return value from a view function this finalizes
         the request by converting it into a response and invoking the
@@ -1953,8 +1976,12 @@ class Flask(_PackageBoundObject):
 
         :internal:
         """
+        """
+        make_response 会根据 view 的返回值 生成 Response 对象
+        """
         response = self.make_response(rv)
         try:
+            # 调用 Hooks 函数
             response = self.process_response(response)
             request_finished.send(self, response=response)
         except Exception:
@@ -2013,19 +2040,30 @@ class Flask(_PackageBoundObject):
         """
         return False
 
+    """
+    将 view 函数的返回值转换为 Response 对象
+    一般情况下不会直接操作 Response 对象，而是通过 make_response来生成
+    
+    """
+
     def make_response(self, rv):
         """Convert the return value from a view function to an instance of
         :attr:`response_class`.
+
+        view function 必须是有返回值的 不能不返回 或者返回 None  报 TypeError
+
 
         :param rv: the return value from the view function. The view function
             must return a response. Returning ``None``, or the view ending
             without returning, is not allowed. The following types are allowed
             for ``view_rv``:
 
+            字符串
             ``str`` (``unicode`` in Python 2)
                 A response object is created with the string encoded to UTF-8
                 as the body.
 
+            文件？
             ``bytes`` (``str`` in Python 2)
                 A response object is created with the bytes as the body.
 
@@ -2055,14 +2093,17 @@ class Flask(_PackageBoundObject):
 
         status = headers = None
 
-        # unpack tuple returns
+        """
+        make_response 是视图函数能返回多个不同数量和类型值的关键，因为它能处理这些情况，统一把它们转换成 response。
+        """
+        # unpack tuple returns  返回元组
         if isinstance(rv, tuple):
             len_rv = len(rv)
 
-            # a 3-tuple is unpacked directly
+            # a 3-tuple is unpacked directly 三元素
             if len_rv == 3:
                 rv, status, headers = rv
-            # decide if a 2-tuple has status or headers
+            # decide if a 2-tuple has status or headers  两元素
             elif len_rv == 2:
                 if isinstance(rv[1], (Headers, dict, tuple, list)):
                     rv, headers = rv
@@ -2076,7 +2117,10 @@ class Flask(_PackageBoundObject):
                     ' (body, status), or (body, headers).'
                 )
 
-        # the body must not be None
+        # the body must not be None  返回 None
+        """
+        返回值不能是 None
+        """
         if rv is None:
             raise TypeError(
                 'The view function did not return a valid response. The'

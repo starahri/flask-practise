@@ -2,8 +2,9 @@
 """
     werkzeug.wrappers
     ~~~~~~~~~~~~~~~~~
+    Flask/wrappers.py 中会继承这些类
+    来实现 flask 中的 request 和 response 的子类
 
-    request 和 response 的子类
 
     The wrappers are simple request and response objects which you can
     subclass to do whatever you want them to do.  The request object contains
@@ -98,6 +99,15 @@ def _clean_accept_ranges(accept_ranges):
     raise ValueError("Invalid accept_ranges value")
 
 
+"""
+Request 
+
+
+@property 能把某个方法转换成属性，每次访问属性的时候，会执行底层的方法作为结果返回。
+
+@cached_property 第一次访问的时候才会调用底层的方法，后续的方法会直接使用之前返回的值。
+
+"""
 class BaseRequest(object):
 
     """Very basic request object.  This does not implement advanced stuff like
@@ -223,7 +233,7 @@ class BaseRequest(object):
     def __init__(self, environ, populate_request=True, shallow=False):
 
         """
-        一个环形引用
+        一个环形引用，仅仅把 environ 保存下来
         初始化的时候并不会解析 environ
         访问某些字段才会解析某些字段
         """
@@ -835,6 +845,21 @@ class BaseResponse(object):
     #: .. _`cookie`: http://browsercookielimits.squawky.net/
     max_cookie_size = 4093
 
+    """
+    :param response: a string or response iterable.
+    :param status: a string with a status or an integer with the status code.
+    :param headers: a list of headers or a
+                    :class:`~werkzeug.datastructures.Headers` object.
+    :param mimetype: the mimetype for the response.  See notice above.
+    :param content_type: the content type for the response.  See notice above.
+    :param direct_passthrough: if set to `True` :meth:`iter_encoded` is not
+                               called before iteration which makes it
+                               possible to pass special iterators through
+                               unchanged (see :func:`wrap_file` for more
+                               details.)
+                               
+    所有的参数都是可选的  默认的情况下回横撑一个状态码为200没有任何 body 的相应
+    """
     def __init__(self, response=None, status=None, headers=None,
                  mimetype=None, content_type=None, direct_passthrough=False):
         if isinstance(headers, Headers):
@@ -2002,7 +2027,17 @@ class WWWAuthenticateMixin(object):
 
 """
 负责解析 Request 并生成 Request 对象
-当
+
+flask/wrappers.py 中的 Request 类的父类
+
+Mixin 是 Python 多继承的一种方式，如果你希望某个类可以自行组合他的特性，或者希望某个特性
+用在多个类中，可以使用 Mixin
+
+比如我们需要能处理各种 Accept 头部的请求
+Class Request(BaseRequest,AcceptMixin)
+    pass
+    
+
 """
 
 class Request(BaseRequest, AcceptMixin, ETagRequestMixin,
@@ -2026,6 +2061,9 @@ class PlainRequest(StreamOnlyMixin, Request):
     .. versionadded:: 0.9
     """
 
+"""
+同样使用了 Mixin 机制
+"""
 
 class Response(BaseResponse, ETagResponseMixin, ResponseStreamMixin,
                CommonResponseDescriptorsMixin,
