@@ -195,6 +195,10 @@ def has_app_context():
     """
     return _app_ctx_stack.top is not None
 
+"""
+
+"""
+
 
 class AppContext(object):
     """The application context binds an application object implicitly
@@ -240,13 +244,14 @@ class AppContext(object):
         self.push()
         return self
 
-    def __exit__(self, exc_type, exc_value, tb):
+    def __exit__(self, exc_type exc_value, tb):
         self.pop(exc_value)
 
         if BROKEN_PYPY_CTXMGR_EXIT and exc_type is not None:
             reraise(exc_type, exc_value, tb)
 
 """
+
 封装的请求对象，这个东西会放在 _request_ctx_stack
 
 """
@@ -352,6 +357,12 @@ class RequestContext(object):
             session=self.session
         )
 
+
+    """
+    在 __init__中调用，生成路由匹配规则，以及 URL附带的参数
+    url_adapter 也是在 __init__中生成的
+    
+    """
     def match_request(self):
         """Can be overridden by a subclass to hook into the matching
         of the request.

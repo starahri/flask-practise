@@ -480,6 +480,10 @@ class RuleTemplateFactory(RuleFactory):
                 )
 
 
+"""
+一个 Rule 对象代表一着一个 URL 模式（view_func 生成的）
+"""
+
 @implements_to_string
 class Rule(RuleFactory):
 
@@ -489,10 +493,19 @@ class Rule(RuleFactory):
     in order to not break the application on Werkzeug upgrades.
 
     `string`
+
+    带有占位符的字符串 占位符是 <converter(arguments):name> 格式
+    converter 还有 arugment 是可选的，如果不指定 converter 那么就用默认的 converter
+    字符串
+
+
         Rule strings basically are just normal URL paths with placeholders in
         the format ``<converter(arguments):name>`` where the converter and the
         arguments are optional.  If no converter is defined the `default`
         converter is used which means `string` in the normal configuration.
+
+    URL 如果以 / 结尾，是分支 URLs，其他的是叶子 URL
+    在默认的情况下 strict_slashed 开启, 没有以 / 结尾的url 都会添加 /
 
         URL rules that end with a slash are branch URLs, others are leaves.
         If you have `strict_slashes` enabled (which is the default), all
@@ -595,7 +608,9 @@ class Rule(RuleFactory):
     .. versionadded:: 0.7
        The `alias` and `host` parameters were added.
     """
-
+    """
+    String 传入的 URL 字符串 URL 必须以 /开头
+    """
     def __init__(self, string, defaults=None, subdomain=None, methods=None,
                  build_only=False, endpoint=None, strict_slashes=None,
                  redirect_to=None, alias=False, host=None):
@@ -617,11 +632,16 @@ class Rule(RuleFactory):
             if isinstance(methods, str):
                 raise TypeError('param `methods` should be `Iterable[str]`, not `str`')
             self.methods = set([x.upper() for x in methods])
+            """
+            自动添加 HEAD 支持
+            """
             if 'HEAD' not in self.methods and 'GET' in self.methods:
                 self.methods.add('HEAD')
         self.endpoint = endpoint
         self.redirect_to = redirect_to
-
+        """
+        处理defaults
+        """
         if defaults:
             self.arguments = set(map(str, defaults))
         else:
@@ -669,6 +689,11 @@ class Rule(RuleFactory):
         :internal:
         """
         self.bind(self.map, rebind=True)
+
+    """
+    这个方法会在 flask add_url_rule 中调用 url_map.add(rule)
+    将 UR
+    """
 
     def bind(self, map, rebind=False):
         """Bind the url to a map and create a regular expression based on
@@ -1098,7 +1123,9 @@ class UUIDConverter(BaseConverter):
     def to_url(self, value):
         return str(value)
 
-
+"""
+value 都是 func 表示默认的转换 func 
+"""
 #: the default converter mapping for the map.
 DEFAULT_CONVERTERS = {
     'default':          UnicodeConverter,
@@ -1110,6 +1137,11 @@ DEFAULT_CONVERTERS = {
     'uuid':             UUIDConverter,
 }
 
+
+"""
+存储 URL 规则  配置参数
+一些配置参数只是默认值，会被上下文的其他值所代替 
+"""
 
 class Map(object):
 
@@ -1166,6 +1198,10 @@ class Map(object):
         self.redirect_defaults = redirect_defaults
         self.host_matching = host_matching
 
+        """
+        default_converters 是一个不可变的 Dict
+        需要 copy 一份实现我们自定义的 converters
+        """
         self.converters = self.default_converters.copy()
         if converters:
             self.converters.update(converters)
@@ -1266,6 +1302,7 @@ class Map(object):
         try:
             server_name = _encode_idna(server_name)
         except UnicodeError:
+        except UnicodeError:
             raise BadHost()
         return MapAdapter(self, server_name, script_name, subdomain,
                           url_scheme, path_info, default_method, query_args)
@@ -1316,8 +1353,20 @@ class Map(object):
         :param server_name: an optional server name hint (see above).
         :param subdomain: optionally the current subdomain (see above).
         """
+
+
+        # 确保你传入的是 environ  这个方法是有 flask 调用的，werkzeug 要做一次验证
         environ = _get_environ(environ)
 
+        """
+        下面是根据 environ 和配置
+        解出 
+        wsgi_server_name 
+        server_name
+        subdomian
+        query
+        
+        """
         if 'HTTP_HOST' in environ:
             wsgi_server_name = environ['HTTP_HOST']
 

@@ -11,6 +11,7 @@ from flask import session,request
 app=Flask(__name__)
 app.secret_key="dev"
 app.debug=True
+app.ssd==ss
 
 @app.route("/")
 def hello():
