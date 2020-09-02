@@ -1,32 +1,34 @@
 from flask import Flask
-from flask import session,request
-
-
+from flask import session, request
+from flask import abort
 
 """
 每一个 Web 应用都是一个可调用对象
 在 Flask 中，这个可调用对象就是 app
 """
 
-app=Flask(__name__)
-app.secret_key="dev"
-app.debug=True
-app.ssd==ss
+app = Flask(__name__)
+app.secret_key = "dev"
+# To make ipdb more easy
+app.debug = False
+
 
 @app.route("/")
 def hello():
     if "username" in session:
-        session["session_id"]=123
+        session["session_id"] = 123
         return f"Hello  {session['username']} \n"
 
-
+    # Test `abort` logic
+    import ipdb;ipdb.set_trace()
+    abort(404)
     return "Hello World!\n"
 
 
 @app.route("/response")
 def resp():
-    return "RESPONSE SUCCESS!",201,{"X-Foo":"BAR"}
-    #return None  # Type Error
+    return "RESPONSE SUCCESS!", 201, {"X-Foo": "BAR"}
+    # return None  # Type Error
 
 
 """
@@ -63,14 +65,11 @@ Cookie 的是保存的 key-value
 """
 
 
-@app.route("/login",methods=["POST"])
+@app.route("/login", methods=["POST"])
 def login():
-    session["username"]=request.form["username"]
+    session["username"] = request.form["username"]
     return "Login Success\n"
 
 
-
-
-
-if __name__=="__main__":
-    app.run(port=6001)
+if __name__ == "__main__":
+    app.run(port=5001)

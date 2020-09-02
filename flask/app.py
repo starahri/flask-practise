@@ -1951,6 +1951,7 @@ class Flask(_PackageBoundObject):
             if rv is None:
                 # 真正的处理函数，会请求我们定义的 view
                 rv = self.dispatch_request()
+        # 这里会拦截所有的异常，包括abort 抛出的 http_exception
         except Exception as e:
             rv = self.handle_user_exception(e)
             # finalize_request 会将 dispath_request 返回的结果

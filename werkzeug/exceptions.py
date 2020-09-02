@@ -639,7 +639,7 @@ class HTTPVersionNotSupported(HTTPException):
         'request.'
     )
 
-
+# 被构造成 code->http exception 的map
 default_exceptions = {}
 __all__ = ['HTTPException']
 
@@ -657,6 +657,8 @@ def _find_exceptions():
         if old_obj is not None and issubclass(obj, old_obj):
             continue
         default_exceptions[obj.code] = obj
+
+# 加载默认的 exceptions 异常
 _find_exceptions()
 del _find_exceptions
 
@@ -678,7 +680,7 @@ class Aborter(object):
         self.mapping = dict(mapping)
         if extra is not None:
             self.mapping.update(extra)
-
+    # abort 可以接受两种类型的参数 一种是 response 一种是 int
     def __call__(self, code, *args, **kwargs):
         if not args and not kwargs and not isinstance(code, integer_types):
             raise HTTPException(response=code)
@@ -706,6 +708,8 @@ def abort(status, *args, **kwargs):
     '''
     return _aborter(status, *args, **kwargs)
 
+# _aborter 是 Aborter 类的实例，
+# 对实例进行调用 会调用类的 __call__ 的方法
 _aborter = Aborter()
 
 

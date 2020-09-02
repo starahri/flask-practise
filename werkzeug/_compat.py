@@ -5,7 +5,9 @@ import sys
 import operator
 import functools
 import warnings
-
+"""
+这个模块是一个兼容模块，兼容不同python版本的语法
+"""
 try:
     import builtins
 except ImportError:
